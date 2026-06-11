@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="logo.png">
+    <link rel="stylesheet" href="css/style.css">
+    <script type="text/javascript" src="/eel.js"></script>
+    <title>Signova</title>
+</head>
+
+<body>
+    <div class="app-shell">
+        <header class="app-header">
+            <div>
+                <h1>Signova</h1>
+            </div>
+            <button class="primary-button" id="startButton">Aniqlashni Boshlash</button>
+        </header>
+
+        <main class="app-main">
+            <section class="camera-panel">
+                <div class="camera-card">
+                    <div class="camera-frame" id="cameraFrame">
+                        <span class="camera-placeholder">Kamera tasviri shu yerda paydo bo'ladi</span>
+                    </div>
+                    <div class="camera-controls">
+                        <button class="secondary-button" id="stopButton" disabled>To'xtatish</button>
+                        <button class="secondary-button" id="clearButton">Tozalash</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="status-panel">
+                <div class="status-card">
+                    <h2>Aniqlangan Belgilar</h2>
+                    <div class="result-box" id="resultBox">Hali belgi aniqlanmadi</div>
+                </div>
+                <div class="status-card">
+                    <h2>Jonli Maslahatlar</h2>
+                    <div class="feedback-list">
+                        <p class="feedback-item"><strong>Maslahat:</strong> Qo'lingizni ramkada aniq joylashtiring.</p>
+                        <p class="feedback-item"><strong>Maslahat:</strong> Yaxshi yoritish va oddiy fon ishlatish.</p>
+                    </div>
+                </div>
+                <div class="status-card">
+                    <h2>Harf Qo'lda</h2>
+                    <div class="letter-menu" id="letterMenu"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const clearButton = document.getElementById('clearButton');
+        const cameraFrame = document.getElementById('cameraFrame');
+        const resultBox = document.getElementById('resultBox');
+        const letterMenu = document.getElementById('letterMenu');
+
+        let imgElement = null;
+        let letterCounts = {};
+
+        // Initialize letter menu
+        function initializeLetterMenu() {
+            const letters = ['A', 'B', 'E', 'F', 'G', 'H', 'I', 'J', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'X', 'Sh', 'Ch'];
+            letters.forEach(letter => {
+                letterCounts[letter] = 0;
+                const button = document.createElement('button');
+                button.className = 'letter-button';
+                button.textContent = `${letter}: 0`;
+                button.dataset.letter = letter;
+                letterMenu.appendChild(button);
+            });
+        }
+
+        initializeLetterMenu();
+
+        // Python → JS: har bir frame kelganda chaqiriladi
+        eel.expose(update_frame);
+        function update_frame(frameB64, label) {
+            if (!imgElement) {
+                cameraFrame.innerHTML = '';
+                imgElement = document.createElement('img');
+                imgElement.className = 'preview-image';
+                cameraFrame.appendChild(imgElement);
+            }
+            imgElement.src = 'data:image/jpeg;base64,' + frameB64;
+
+            if (label) {
+                resultBox.textContent = label;
+                resultBox.style.color = '#38bdf8';
+                resultBox.style.fontSize = '3rem';
+
+                // Update letter counts
+                const letters = label.split('');
+                letters.forEach(letter => {
+                    if (letterCounts.hasOwnProperty(letter)) {
+                        letterCounts[letter]++;
+                        const button = letterMenu.querySelector(`[data-letter="${letter}"]`);
+                        if (button) {
+                            button.textContent = `${letter}: ${letterCounts[letter]}`;
+                        }
+                    }
+                });
+            } else {
+                resultBox.textContent = 'Belgi aniqlanmadi';
+                resultBox.style.color = '#f8fafc';
+                resultBox.style.fontSize = '1.4rem';
+            }
+        }
+
+        // Python → JS: inference to'xtaganda
+        eel.expose(inference_stopped);
+        function inference_stopped() {
+            startButton.textContent = 'Aniqlashni Boshlash';
+            startButton.disabled = false;
+            stopButton.disabled = true;
+        }
+
+        startButton.addEventListener('click', async () => {
+            startButton.textContent = 'Ishlayapti...';
+            startButton.disabled = true;
+            stopButton.disabled = false;
+            resultBox.textContent = 'Kamera ishga tushmoqda...';
+            resultBox.style.color = '#f8fafc';
+            resultBox.style.fontSize = '1.4rem';
+
+            try {
+                const result = await eel.start_inference()();
+                if (result.status === 'already_running') {
+                    resultBox.textContent = 'Allaqachon ishlayapti!';
+                    startButton.textContent = 'Aniqlashni Boshlash';
+                    startButton.disabled = false;
+                }
+            } catch (error) {
+                resultBox.textContent = 'Xatolik: ' + error;
+                startButton.textContent = 'Aniqlashni Boshlash';
+                startButton.disabled = false;
+                stopButton.disabled = true;
+            }
+        });
+
+        stopButton.addEventListener('click', async () => {
+            await eel.stop_inference()();
+            stopButton.disabled = true;
+            startButton.textContent = 'Aniqlashni Boshlash';
+            startButton.disabled = false;
+        });
+
+        clearButton.addEventListener('click', () => {
+            imgElement = null;
+            cameraFrame.innerHTML = '<span class="camera-placeholder">Kamera tasviri shu yerda paydo bo\'ladi</span>';
+            resultBox.textContent = 'Hali belgi aniqlanmadi';
+            resultBox.style.color = '#f8fafc';
+            resultBox.style.fontSize = '1.4rem';
+        });
+    </script>
+</body>
+
+</html>
