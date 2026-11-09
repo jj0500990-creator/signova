@@ -1,0 +1,6 @@
+Eel==0.18.2
+mediapipe==0.10.33
+opencv-contrib-python==4.11.0.86
+numpy==1.26.4
+# model.p shu versiya bilan saqlangan — boshqa versiyada yuklanmasligi mumkin
+scikit-learn==1.8.0

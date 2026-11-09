@@ -65,7 +65,7 @@ formatda ishlaydi.
 ```bash
 git clone https://github.com/jj0500990-creator/signova.git
 cd signova
-pip install eel opencv-python mediapipe==0.10.33 scikit-learn numpy
+pip install -r requirements.txt
 ```
 
 ## ▶️ Ishga tushirish
@@ -125,4 +125,4 @@ gui/
 - [ ] Qolgan harflarni qo'shish (C, D, K, Y, Z, O', G' …)
 - [ ] Bir xil harfni ketma-ket yozish imkoniyati (masalan, «LL»)
 - [ ] P va T harflari uchun datasetni yaxshilash (qo'l ba'zi rasmlarda topilmaydi)
-- [ ] `requirements.txt` qo'shish
+- [x] `requirements.txt` qo'shish
