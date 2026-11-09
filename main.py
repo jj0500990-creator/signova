@@ -55,6 +55,10 @@ def inference_loop():
     current_candidate = None
     gesture_count = 0
     stable_threshold = 5
+    # Qo'l shuncha kadr ramkadan chiqsa yoki imo noaniq bo'lsa, imo "qo'yib yuborilgan"
+    # hisoblanadi va o'sha harfni yana yozish mumkin bo'ladi (masalan, "LL").
+    RELEASE_FRAMES = 8
+    idle_frames = 0
 
     while running:
         ret, frame = cap.read()
@@ -68,6 +72,7 @@ def inference_loop():
 
         x1, y1, x2, y2 = 0, 0, 0, 0
         new_letter = ""
+        confident = False
 
         if hands:
             x_ = [lm.x for hand in hands for lm in hand]
@@ -89,6 +94,7 @@ def inference_loop():
                 predicted_class = model.classes_[best_idx]
 
                 if confidence >= CONFIDENCE_THRESHOLD:
+                    confident = True
                     prediction_buffer.append(predicted_class)
                     most_common = Counter(prediction_buffer).most_common(1)[0][0]
                     
@@ -119,6 +125,14 @@ def inference_loop():
             predicted_label = ""
             current_candidate = None
             gesture_count = 0
+
+        if confident:
+            idle_frames = 0
+        else:
+            idle_frames += 1
+            if idle_frames >= RELEASE_FRAMES and last_gesture:
+                last_gesture = ""
+                prediction_buffer.clear()
 
         if predicted_label and x2 > 0:
             cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 0), 4)

@@ -18,7 +18,9 @@ def create_landmarker():
     options = mp_vision.HandLandmarkerOptions(
         base_options=mp_tasks.BaseOptions(model_asset_path=HAND_MODEL_PATH),
         running_mode=mp_vision.RunningMode.IMAGE,
-        num_hands=2,
+        # Barcha harflar bitta qo'l bilan ko'rsatiladi. Faqat eng ishonchli qo'l
+        # olinadi — ikkinchi qo'l (yoki xato aniqlash) xususiyatlarni buzmaydi.
+        num_hands=1,
         min_hand_detection_confidence=0.3,
         min_hand_presence_confidence=0.3,
         min_tracking_confidence=0.5
