@@ -34,13 +34,15 @@ while True:
     if not ret:
         break
 
-    frame = cv2.flip(frame, 1)
-    H, W, _ = frame.shape
+    # Qo'l aylantirilmagan kadrdan aniqlanadi — o'quv rasmlari ham aylantirilmagan.
+    # Kadr faqat ekranda ko'zgudagidek ko'rinishi uchun aylantiriladi.
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     hands = detect_hands(landmarker, frame_rgb)
+    frame = cv2.flip(frame, 1)
+    H, W, _ = frame.shape
 
     if hands:
-        x_ = [lm.x for hand in hands for lm in hand]
+        x_ = [1 - lm.x for hand in hands for lm in hand]  # ekrandagi (aylantirilgan) koordinata
         y_ = [lm.y for hand in hands for lm in hand]
         for x, y in zip(x_, y_):
             cv2.circle(frame, (int(x * W), int(y * H)), 3, (0, 255, 0), -1)
