@@ -63,8 +63,8 @@ formatda ishlaydi.
 **Talablar:** Python 3.11, veb-kamera, Chrome yoki Edge brauzeri (Eel oynasi uchun).
 
 ```bash
-git clone <repo-url>
-cd gui
+git clone https://github.com/jj0500990-creator/signova.git
+cd signova
 pip install eel opencv-python mediapipe==0.10.33 scikit-learn numpy
 ```
 
