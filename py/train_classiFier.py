@@ -39,7 +39,7 @@ print(f"\nModel accuracy: {score * 100:.2f}%")
 print("\nHar bir harf uchun aniqlik:")
 print(classification_report(y_test, y_predict))
 
-label_order = sorted(list(set(labels)))
+label_order = sorted(set(labels), key=int)
 print(f"Label order: {label_order}")
 
 with open('model.p', 'wb') as f:

@@ -80,7 +80,7 @@
 
         // Python → JS: har bir frame kelganda chaqiriladi
         eel.expose(update_frame);
-        function update_frame(frameB64, label) {
+        function update_frame(frameB64, label, newLetter) {
             if (!imgElement) {
                 cameraFrame.innerHTML = '';
                 imgElement = document.createElement('img');
@@ -93,22 +93,23 @@
                 resultBox.textContent = label;
                 resultBox.style.color = '#38bdf8';
                 resultBox.style.fontSize = '3rem';
-
-                // Update letter counts
-                const letters = label.split('');
-                letters.forEach(letter => {
-                    if (letterCounts.hasOwnProperty(letter)) {
-                        letterCounts[letter]++;
-                        const button = letterMenu.querySelector(`[data-letter="${letter}"]`);
-                        if (button) {
-                            button.textContent = `${letter}: ${letterCounts[letter]}`;
-                        }
-                    }
-                });
             } else {
                 resultBox.textContent = 'Belgi aniqlanmadi';
                 resultBox.style.color = '#f8fafc';
                 resultBox.style.fontSize = '1.4rem';
+            }
+
+            // Faqat yangi tasdiqlangan harf sanaladi ("Sh", "Ch" ham bitta harf)
+            if (newLetter && letterCounts.hasOwnProperty(newLetter)) {
+                letterCounts[newLetter]++;
+                setLetterCount(newLetter);
+            }
+        }
+
+        function setLetterCount(letter) {
+            const button = letterMenu.querySelector(`[data-letter="${letter}"]`);
+            if (button) {
+                button.textContent = `${letter}: ${letterCounts[letter]}`;
             }
         }
 
@@ -150,7 +151,12 @@
             startButton.disabled = false;
         });
 
-        clearButton.addEventListener('click', () => {
+        clearButton.addEventListener('click', async () => {
+            await eel.clear_output()();
+            Object.keys(letterCounts).forEach(letter => {
+                letterCounts[letter] = 0;
+                setLetterCount(letter);
+            });
             imgElement = null;
             cameraFrame.innerHTML = '<span class="camera-placeholder">Kamera tasviri shu yerda paydo bo\'ladi</span>';
             resultBox.textContent = 'Hali belgi aniqlanmadi';

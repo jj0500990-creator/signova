@@ -1,14 +1,13 @@
 import os
 import pickle
+import sys
+
 import cv2
-import mediapipe as mp
 
-mp_hands = mp.solutions.hands
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from hand_features import create_landmarker, detect_hands, extract_features
 
-hands = mp_hands.Hands(
-    static_image_mode=True,
-    min_detection_confidence=0.3
-)
+landmarker = create_landmarker()
 
 DATA_DIR = './data'
 
@@ -27,7 +26,6 @@ for idx, dir_ in enumerate(dirs):
     fail = 0
 
     for img_path in img_files:
-        data_aux = []
         full_path = os.path.join(dir_path, img_path)
 
         img = cv2.imread(full_path)
@@ -36,16 +34,10 @@ for idx, dir_ in enumerate(dirs):
             continue
 
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        results = hands.process(img_rgb)
+        hands = detect_hands(landmarker, img_rgb)
 
-        if results.multi_hand_landmarks:
-            for hand_landmarks in results.multi_hand_landmarks:
-                for i in range(len(hand_landmarks.landmark)):
-                    x = hand_landmarks.landmark[i].x
-                    y = hand_landmarks.landmark[i].y
-                    data_aux.append(x)
-                    data_aux.append(y)
-            data.append(data_aux)
+        if hands:
+            data.append(extract_features(hands))
             labels.append(dir_)
             success += 1
         else:

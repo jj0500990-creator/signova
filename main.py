@@ -5,14 +5,13 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 import eel
 import cv2
-import mediapipe as mp
-from mediapipe.tasks import python as mp_tasks
-from mediapipe.tasks.python import vision as mp_vision
 import pickle
 import numpy as np
 from collections import deque, Counter
 import base64
 import threading
+
+from hand_features import create_landmarker, detect_hands, extract_features, pad_features
 
 eel.init('web')
 
@@ -38,16 +37,7 @@ output_text = ""
 def inference_loop():
     global running, last_gesture, output_text, last_update_time
 
-    options = mp_vision.HandLandmarkerOptions(
-        base_options=mp_tasks.BaseOptions(model_asset_path='./hand_landmarker.task'),
-        running_mode=mp_vision.RunningMode.IMAGE,
-        num_hands=2,
-        min_hand_detection_confidence=0.3,
-        min_hand_presence_confidence=0.3,
-        min_tracking_confidence=0.5
-    )
-
-    landmarker = mp_vision.HandLandmarker.create_from_options(options)
+    landmarker = create_landmarker()
 
     cap = None
     for i in range(5):
@@ -74,36 +64,18 @@ def inference_loop():
         frame = cv2.flip(frame, 1)
         H, W, _ = frame.shape
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=np.asarray(frame_rgb, dtype=np.uint8))
-        results = landmarker.detect(mp_image)
+        hands = detect_hands(landmarker, frame_rgb)
 
         x1, y1, x2, y2 = 0, 0, 0, 0
+        new_letter = ""
 
-        if results.hand_landmarks:
-            for hand_landmarks in results.hand_landmarks:
-                for landmark in hand_landmarks:
-                    x = int(landmark.x * W)
-                    y = int(landmark.y * H)
-                    cv2.circle(frame, (x, y), 3, (0, 255, 0), -1)
+        if hands:
+            x_ = [lm.x for hand in hands for lm in hand]
+            y_ = [lm.y for hand in hands for lm in hand]
+            for x, y in zip(x_, y_):
+                cv2.circle(frame, (int(x * W), int(y * H)), 3, (0, 255, 0), -1)
 
-            data_aux, x_, y_ = [], [], []
-
-            for hand_landmarks in results.hand_landmarks:
-                for landmark in hand_landmarks:
-                    x_.append(landmark.x)
-                    y_.append(landmark.y)
-
-            min_x, min_y = min(x_), min(y_)
-
-            for hand_landmarks in results.hand_landmarks:
-                for landmark in hand_landmarks:
-                    data_aux.append(landmark.x - min_x)
-                    data_aux.append(landmark.y - min_y)
-
-            if len(data_aux) < max_length:
-                data_aux += [0] * (max_length - len(data_aux))
-            else:
-                data_aux = data_aux[:max_length]
+            data_aux = pad_features(extract_features(hands), max_length)
 
             x1 = int(min(x_) * W) - 10
             y1 = int(min(y_) * H) - 10
@@ -127,7 +99,8 @@ def inference_loop():
                         gesture_count = 1
                     
                     if gesture_count >= stable_threshold and current_candidate != last_gesture:
-                        output_text += labels_dict[current_candidate]
+                        new_letter = labels_dict[current_candidate]
+                        output_text += new_letter
                         last_gesture = current_candidate
                         gesture_count = 0
                         print(f"Stable gesture confirmed: {labels_dict[current_candidate]} | Confidence: {confidence:.2f}")
@@ -154,7 +127,7 @@ def inference_loop():
 
         _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
         frame_b64 = base64.b64encode(buffer).decode('utf-8')
-        eel.update_frame(frame_b64, output_text)
+        eel.update_frame(frame_b64, output_text, new_letter)
 
     cap.release()
     running = False
