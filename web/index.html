@@ -115,10 +115,15 @@
 
         // Python → JS: inference to'xtaganda
         eel.expose(inference_stopped);
-        function inference_stopped() {
+        function inference_stopped(message) {
             startButton.textContent = 'Aniqlashni Boshlash';
             startButton.disabled = false;
             stopButton.disabled = true;
+            if (message) {
+                resultBox.textContent = message;
+                resultBox.style.color = '#f87171';
+                resultBox.style.fontSize = '1.4rem';
+            }
         }
 
         startButton.addEventListener('click', async () => {

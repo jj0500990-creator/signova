@@ -19,7 +19,7 @@
 ## ✨ Imkoniyatlar
 
 - 📷 **Real vaqtda aniqlash** — veb-kamera orqali qo'l harakatlarini kuzatadi
-- ✋ **Ikki qo'lni qo'llab-quvvatlaydi** — MediaPipe Hand Landmarker yordamida 21 × 2 nuqta
+- ✋ **Bir qo'l bilan ishlaydi** — MediaPipe Hand Landmarker eng ishonchli qo'lning 21 ta nuqtasini oladi
 - 🧠 **Yuqori aniqlik** — RandomForest modeli, test to'plamida **~99.8%**
 - 🛡️ **Barqarorlik filtri** — harf faqat bir necha kadr davomida ishonchli (≥ 80%) aniqlangandagina yoziladi
 - 🔤 **Matn yig'ish** — aniqlangan harflar ketma-ket so'zga qo'shiladi
@@ -39,10 +39,10 @@
  Kamera kadri
      │
      ▼
- MediaPipe Hand Landmarker ──► 21 ta nuqta har bir qo'l uchun
+ MediaPipe Hand Landmarker ──► bitta qo'lning 21 ta nuqtasi
      │
      ▼
- Normallashtirish (x − min_x, y − min_y) ──► 84 ta son
+ Normallashtirish (x − min_x, y − min_y) / qo'l o'lchami ──► 42 ta son
      │
      ▼
  RandomForest (model.p) ──► harf + ishonch darajasi
@@ -96,7 +96,7 @@ Barcha buyruqlar loyiha ildizidan ishga tushiriladi:
 > ⚠️ 3-qadam ildizdagi `model.p` ni **ustidan yozadi** — kerak bo'lsa avval nusxasini saqlang.
 
 Yangi harf qo'shish uchun: `data/` ga yangi sinf papkasini to'ldiring, so'ng
-`main.py` dagi `labels_dict` va `web/index.html` dagi harflar ro'yxatiga
+`hand_features.py` dagi `LABELS` va `web/index.html` dagi harflar ro'yxatiga
 qo'shing.
 
 ## 📁 Loyiha tuzilishi

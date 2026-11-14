@@ -11,7 +11,7 @@ from collections import deque, Counter
 import base64
 import threading
 
-from hand_features import create_landmarker, detect_hands, extract_features, pad_features
+from hand_features import create_landmarker, detect_hands, extract_features, pad_features, label_for
 
 eel.init('web')
 
@@ -19,34 +19,52 @@ model_dict = pickle.load(open('./model.p', 'rb'))
 model = model_dict['model']
 max_length = model_dict['max_length']
 
-labels_dict = {
-    '0': 'A',  '1': 'B',  '2': 'E',  '3': 'F',  '4': 'G',
-    '5': 'H',  '6': 'I',  '7': 'J',  '8': 'L',  '9': 'M',
-    '10': 'N', '11': 'O', '12': 'P', '13': 'Q', '14': 'R',
-    '15': 'S', '16': 'T', '17': 'U', '18': 'V', '19': 'X',
-    '20': 'Sh', '21': 'Ch'
-}
-
 print("Model sinflari tartibi:", list(model.classes_))
 
-running = False
 last_gesture = ""
 output_text = ""
 
+# Ishlab turgan aniqlash oqimi va uni to'xtatish signali. Har bir ishga
+# tushirishda yangi Event yaratiladi, shuning uchun eski oqim yangisini
+# "qayta yoqib" yubormaydi.
+worker = None
+stop_event = threading.Event()
+worker_lock = threading.Lock()
 
-def inference_loop():
-    global running, last_gesture, output_text, last_update_time
 
-    landmarker = create_landmarker()
-
-    cap = None
+def open_camera():
     for i in range(5):
         cap = cv2.VideoCapture(i)
         if cap.isOpened():
-            break
-    else:
+            return cap
+        cap.release()
+    return None
+
+
+def notify_stopped(message=""):
+    # Faqat hozirgi oqim UI'ni "to'xtadi" holatiga o'tkazadi — eski, to'xtayotgan
+    # oqim yangi ishga tushirilgan aniqlashning tugmalarini buzmasin.
+    if worker is threading.current_thread():
+        eel.inference_stopped(message)
+
+
+def inference_loop(my_stop, previous):
+    global last_gesture, output_text
+
+    # Oldingi oqim kamerani bo'shatib bo'lishini kutamiz — ikkita oqim bir
+    # vaqtda kameradan o'qimasin va matnga ikki marta yozmasin.
+    if previous is not None:
+        previous.join()
+
+    if my_stop.is_set():
+        return
+
+    landmarker = create_landmarker()
+
+    cap = open_camera()
+    if cap is None:
         print("No camera found")
-        eel.inference_stopped()
+        notify_stopped("Kamera topilmadi")
         return
 
     prediction_buffer = deque(maxlen=15)
@@ -60,7 +78,7 @@ def inference_loop():
     RELEASE_FRAMES = 8
     idle_frames = 0
 
-    while running:
+    while not my_stop.is_set():
         ret, frame = cap.read()
         if not ret:
             break
@@ -107,13 +125,13 @@ def inference_loop():
                         gesture_count = 1
                     
                     if gesture_count >= stable_threshold and current_candidate != last_gesture:
-                        new_letter = labels_dict[current_candidate]
+                        new_letter = label_for(current_candidate)
                         output_text += new_letter
                         last_gesture = current_candidate
                         gesture_count = 0
-                        print(f"Stable gesture confirmed: {labels_dict[current_candidate]} | Confidence: {confidence:.2f}")
+                        print(f"Stable gesture confirmed: {new_letter} | Confidence: {confidence:.2f}")
                     
-                    predicted_label = labels_dict[current_candidate] if current_candidate else ""
+                    predicted_label = label_for(current_candidate) if current_candidate else ""
                 else:
                     current_candidate = None
                     gesture_count = 0
@@ -146,25 +164,27 @@ def inference_loop():
         eel.update_frame(frame_b64, output_text, new_letter)
 
     cap.release()
-    running = False
-    eel.inference_stopped()
+    landmarker.close()
+    notify_stopped()
 
 
 @eel.expose
 def start_inference():
-    global running
-    if not running:
-        running = True
-        t = threading.Thread(target=inference_loop, daemon=True)
-        t.start()
+    global worker, stop_event
+    with worker_lock:
+        if worker is not None and worker.is_alive() and not stop_event.is_set():
+            return {'status': 'already_running'}
+        stop_event = threading.Event()
+        worker = threading.Thread(target=inference_loop,
+                                  args=(stop_event, worker), daemon=True)
+        worker.start()
         return {'status': 'started'}
-    return {'status': 'already_running'}
 
 
 @eel.expose
 def stop_inference():
-    global running
-    running = False
+    with worker_lock:
+        stop_event.set()
     return {'status': 'stopped'}
 
 

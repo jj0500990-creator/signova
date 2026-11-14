@@ -7,19 +7,11 @@ import cv2
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from hand_features import create_landmarker, detect_hands, extract_features, pad_features
+from hand_features import create_landmarker, detect_hands, extract_features, pad_features, label_for
 
 model_dict = pickle.load(open('./model.p', 'rb'))
 model = model_dict['model']
 max_length = model_dict['max_length']
-
-labels_dict = {
-    '0': 'A', '1': 'B', '2': 'E', '3': 'F', '4': 'G',
-    '5': 'H', '6': 'I', '7': 'J', '8': 'L', '9': 'M',
-    '10': 'N', '11': 'O', '12': 'P', '13': 'Q', '14': 'R',
-    '15': 'S', '16': 'T', '17': 'U', '18': 'V', '19': 'X',
-    '20': 'Sh', '21': 'Ch'
-}
 
 cap = cv2.VideoCapture(0)
 landmarker = create_landmarker()
@@ -61,12 +53,13 @@ while True:
             if confidence >= CONFIDENCE_THRESHOLD:
                 prediction_buffer.append(model.classes_[np.argmax(proba)])
                 most_common = Counter(prediction_buffer).most_common(1)[0][0]
-                predicted_label = labels_dict[most_common]
+                predicted_label = label_for(most_common)
             else:
                 predicted_label = ""
 
         except Exception as e:
             print(f"Prediction error: {e}")
+            predicted_label = ""
 
     else:
         prediction_buffer.clear()
@@ -82,4 +75,5 @@ while True:
         break
 
 cap.release()
+landmarker.close()
 cv2.destroyAllWindows()

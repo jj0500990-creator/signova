@@ -14,7 +14,13 @@ DATA_DIR = './data'
 data = []
 labels = []
 
-dirs = sorted(os.listdir(DATA_DIR), key=lambda x: int(x))
+# Faqat raqamli, bo'sh bo'lmagan papkalar olinadi (masalan, desktop.ini yoki
+# bo'sh data/22 kabi papkalar o'tkazib yuboriladi)
+dirs = sorted(
+    (d for d in os.listdir(DATA_DIR)
+     if d.isdigit() and os.path.isdir(os.path.join(DATA_DIR, d))
+     and os.listdir(os.path.join(DATA_DIR, d))),
+    key=int)
 total_dirs = len(dirs)
 
 for idx, dir_ in enumerate(dirs):
@@ -45,6 +51,7 @@ for idx, dir_ in enumerate(dirs):
 
     print(f"  ✓ Success: {success} | ✗ Failed (qo'l topilmadi): {fail}")
 
+landmarker.close()
 print(f"\nJami: {len(data)} ta sample saqlandi")
 
 with open('data.pickle', 'wb') as f:

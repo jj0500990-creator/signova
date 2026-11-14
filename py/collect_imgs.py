@@ -1,11 +1,17 @@
 import os
+import sys
+
 import cv2
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from hand_features import LABELS, label_for
 
 DATASET_DIR = './data'
 if not os.path.exists(DATASET_DIR):
     os.makedirs(DATASET_DIR)
 
-number_of_classes = 23
+# Har bir harf uchun bitta papka (data/0 ... data/21) — hand_features.LABELS bilan bir xil
+number_of_classes = len(LABELS)
 dataset_size = 200
 
 cap = cv2.VideoCapture(0)
@@ -15,7 +21,7 @@ for j in range(0, number_of_classes):
     if not os.path.exists(class_dir):
         os.makedirs(class_dir)
 
-    print(f"\nReady for class {j}")
+    print(f"\nReady for class {j} ({label_for(j)})")
     print("Press 'q' to quit")
 
     while True:
@@ -23,7 +29,7 @@ for j in range(0, number_of_classes):
         if not ret:
             break
 
-        cv2.putText(frame, f'Class: {j} / {number_of_classes - 1}', (10, 40),
+        cv2.putText(frame, f'Class: {j} ({label_for(j)}) / {number_of_classes - 1}', (10, 40),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
         cv2.putText(frame, "Press 's' to START", (10, 80),

@@ -13,6 +13,21 @@ from mediapipe.tasks.python import vision as mp_vision
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 HAND_MODEL_PATH = os.path.join(ROOT_DIR, 'hand_landmarker.task')
 
+# Sinf raqami (data/<raqam> papkasi) -> harf. Yangi harf qo'shilsa, faqat shu
+# yerga yoziladi — ilova, yig'ish va tekshirish skriptlari shu ro'yxatdan oladi.
+LABELS = {
+    '0': 'A',  '1': 'B',  '2': 'E',  '3': 'F',  '4': 'G',
+    '5': 'H',  '6': 'I',  '7': 'J',  '8': 'L',  '9': 'M',
+    '10': 'N', '11': 'O', '12': 'P', '13': 'Q', '14': 'R',
+    '15': 'S', '16': 'T', '17': 'U', '18': 'V', '19': 'X',
+    '20': 'Sh', '21': 'Ch'
+}
+
+
+def label_for(class_id):
+    """Sinf raqamini harfga aylantiradi; noma'lum sinf uchun raqamning o'zi."""
+    return LABELS.get(str(class_id), str(class_id))
+
 
 def create_landmarker():
     options = mp_vision.HandLandmarkerOptions(
@@ -23,7 +38,6 @@ def create_landmarker():
         num_hands=1,
         min_hand_detection_confidence=0.3,
         min_hand_presence_confidence=0.3,
-        min_tracking_confidence=0.5
     )
     return mp_vision.HandLandmarker.create_from_options(options)
 
@@ -36,14 +50,20 @@ def detect_hands(landmarker, frame_rgb):
 
 
 def extract_features(hands):
-    """Barcha nuqtalarning (x - min_x, y - min_y) qiymatlari, ketma-ket."""
+    """Barcha nuqtalarning (x - min_x, y - min_y) / o'lcham qiymatlari, ketma-ket.
+
+    Qo'l o'lchamiga bo'linadi, shuning uchun qo'l kameraga yaqin yoki uzoq
+    bo'lishi natijaga ta'sir qilmaydi.
+    """
     points = [(lm.x, lm.y) for hand in hands for lm in hand]
-    min_x = min(p[0] for p in points)
-    min_y = min(p[1] for p in points)
+    xs = [p[0] for p in points]
+    ys = [p[1] for p in points]
+    min_x, min_y = min(xs), min(ys)
+    scale = max(max(xs) - min_x, max(ys) - min_y) or 1e-6
     features = []
     for x, y in points:
-        features.append(x - min_x)
-        features.append(y - min_y)
+        features.append((x - min_x) / scale)
+        features.append((y - min_y) / scale)
     return features
 
 
